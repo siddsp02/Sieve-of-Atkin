@@ -11,7 +11,12 @@ to the range iterators not having the optimized limits,
 wasting lots of loop iterations.
 """
 
+
+import cProfile
+import doctest
+import pstats
 from itertools import product
+from math import isqrt
 
 
 def sieve_of_atkin(limit: int) -> list[int]:
@@ -22,67 +27,73 @@ def sieve_of_atkin(limit: int) -> list[int]:
 
     :param limit: The maximum value for a prime number.
     :type limit: int
-    :return: The prime numbers less than or equal to the limit specified.
+    :return: All prime numbers less than or equal to the limit specified.
     :rtype: list[int]
+
+    Examples:
+    >>> sieve_of_atkin(5)
+    [2, 3, 5]
+    >>> sieve_of_atkin(10)
+    [2, 3, 5, 7]
+    >>> sieve_of_atkin(20)
+    [2, 3, 5, 7, 11, 13, 17, 19]
+    >>> sieve_of_atkin(40)
+    [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]
+
+    For a very large limit, the number of primes can be tested by taking
+    the length of the sequence or list returned by the function:
+    >>> len(sieve_of_atkin(100_000))
+    9592
+    >>> len(sieve_of_atkin(200_000))
+    17984
     """
 
-    sieve = {}
-    results = [2, 3, 5]
+    sieve = {}  # type: dict[int, bool]
     s = {1, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 49, 53, 59}
+    results = [2, 3, 5]
 
-    # Iteration for ranges has to be improved to reduce the number
-    # of computations performed by the algorithm.
+    wset = range(limit // 60 + 1)
 
-    set_w = range(limit // 60 + 1)
-
-    for w, x in product(set_w, s):
+    for w, x in product(wset, s):
         n = 60 * w + x
         sieve[n] = False
 
-    set_x, set_y = range(1, limit + 1), range(1, limit + 1, 2)
+    xset = range(1, isqrt((limit - 1) // 4) + 1)
+    yset = range(1, isqrt(limit - 4) + 1, 2)
 
-    for x, y in product(set_x, set_y):
+    for x, y in product(xset, yset):
         n = 4 * x ** 2 + y ** 2
-        if n > limit:
-            continue
-        if n % 60 in {1, 13, 17, 29, 37, 41, 49, 53}:
+        if n <= limit and n % 60 in {1, 13, 17, 29, 37, 41, 49, 53}:
             sieve[n] ^= True
 
-    set_x, set_y = set_y, range(2, limit + 1, 2)
+    xset = range(1, isqrt((limit - 1) // 3) + 1)
+    yset = range(2, isqrt(limit - 3) + 1, 2)
 
-    for x, y in product(set_x, set_y):
+    for x, y in product(xset, yset):
         n = 3 * x ** 2 + y ** 2
-        if n > limit:
-            continue
-        if n % 60 in {7, 19, 31, 43}:
+        if n <= limit and n % 60 in {7, 19, 31, 43}:
             sieve[n] ^= True
 
-    set_x, set_y = range(2, limit + 1), range(1, limit + 1)
+    lim = isqrt(limit) + 1  # Temporary limit for speed.
+    xset, yset = range(2, lim), range(1, lim)
 
-    for x, y in product(set_x, set_y):
-        if x <= y:
-            continue
-        n = 3 * x ** 2 - y ** 2
-        if n > limit:
-            continue
-        if n % 60 in {11, 23, 47, 59}:
-            sieve[n] ^= True
+    for x, y in product(xset, yset):
+        if x > y:
+            n = 3 * x ** 2 - y ** 2
+            if n <= limit and n % 60 in {11, 23, 47, 59}:
+                sieve[n] ^= True
 
-    for w, x in product(set_w, s):
+    for w, x in product(wset, s):
         n = 60 * w + x
-        if n < 7 or n ** 2 > limit:
-            continue
-        if sieve[n]:
-            for w, x in product(set_w, s):
-                c = n ** 2 * (60 * w + x)
-                if c > limit:
-                    continue
-                sieve[c] = False
+        npow = n ** 2
+        if n >= 7 and npow <= limit and sieve[n]:
+            for w, x in product(wset, s):
+                c = npow * (60 * w + x)
+                if c <= limit:
+                    sieve[c] = False
 
-    for w, x in product(set_w, s):
+    for w, x in product(wset, s):
         n = 60 * w + x
-        if n < 7:
-            continue
         if n > limit:
             break
         if sieve[n]:
@@ -91,10 +102,12 @@ def sieve_of_atkin(limit: int) -> list[int]:
     return results
 
 
-def main(n: int) -> None:
-    length = len(sieve_of_atkin(n))
-    print(f"primes <= {n}: {length}")
+def main(n: int = 10_000) -> None:
+    with cProfile.Profile() as pr:
+        print(len(sieve_of_atkin(n)))
+        pr.print_stats(pstats.SortKey.TIME)
 
 
 if __name__ == "__main__":
-    main(100)
+    # doctest.testmod()
+    main()
