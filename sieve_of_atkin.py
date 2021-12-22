@@ -11,12 +11,11 @@ to the range iterators not having the optimized limits,
 wasting lots of loop iterations.
 """
 
-
 import cProfile
 import doctest
 import pstats
 from itertools import product
-from math import isqrt
+from math import isqrt, sqrt
 
 
 def sieve_of_atkin(limit: int) -> list[int]:
@@ -48,14 +47,16 @@ def sieve_of_atkin(limit: int) -> list[int]:
     17984
     """
 
-    sieve = {}  # type: dict[int, bool]
+    sieve = {}
     s = {1, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 49, 53, 59}
     results = [2, 3, 5]
 
-    wset = range(limit // 60 + 1)
+    wset = range(0, limit + 1, 60)
 
     for w, x in product(wset, s):
-        n = 60 * w + x
+        n = w + x
+        if n > limit:
+            break
         sieve[n] = False
 
     xset = range(1, isqrt((limit - 1) // 4) + 1)
@@ -74,26 +75,27 @@ def sieve_of_atkin(limit: int) -> list[int]:
         if n <= limit and n % 60 in {7, 19, 31, 43}:
             sieve[n] ^= True
 
-    lim = isqrt(limit) + 1  # Temporary limit for speed.
-    xset, yset = range(2, lim), range(1, lim)
+    lim2 = int((sqrt(limit * 2 + 3) + 1) / 2)
 
-    for x, y in product(xset, yset):
-        if x > y:
+    for x in range(2, lim2):
+        for y in range(1, x):
             n = 3 * x ** 2 - y ** 2
             if n <= limit and n % 60 in {11, 23, 47, 59}:
                 sieve[n] ^= True
 
+    nwset = range(0, limit // 49 - 1, 60)
+
     for w, x in product(wset, s):
-        n = 60 * w + x
+        n = w + x
         npow = n ** 2
-        if n >= 7 and npow <= limit and sieve[n]:
-            for w, x in product(wset, s):
-                c = npow * (60 * w + x)
+        if n >= 7 and npow < limit and sieve[n]:
+            for w, x in product(nwset, s):
+                c = npow * (w + x)
                 if c <= limit:
                     sieve[c] = False
 
     for w, x in product(wset, s):
-        n = 60 * w + x
+        n = w + x
         if n > limit:
             break
         if sieve[n]:
