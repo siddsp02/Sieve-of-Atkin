@@ -14,15 +14,18 @@ wasting lots of loop iterations.
 import cProfile
 import doctest
 import pstats
+from collections import defaultdict
 from itertools import product
-from math import isqrt, sqrt
+from math import isqrt
 
 
 def sieve_of_atkin(limit: int) -> list[int]:
     """Returns the number of primes from 2 to a specified limit in a list.
 
     An algorithm for finding all primes less than or equal to the limit
-    specified to the function.
+    specified to the function. The algorithm works by not only marking
+    multiples of a number, but also multiples of its square, and checking
+    modulus 60 remainders.
 
     :param limit: The maximum value for a prime number.
     :type limit: int
@@ -47,56 +50,43 @@ def sieve_of_atkin(limit: int) -> list[int]:
     17984
     """
 
-    sieve = {}
-    s = {1, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 49, 53, 59}
-    results = [2, 3, 5]
-
-    wset = range(0, limit + 1, 60)
-
-    for w, x in product(wset, s):
-        n = w + x
-        if n > limit:
-            break
-        sieve[n] = False
-
-    xset = range(1, isqrt((limit - 1) // 4) + 1)
-    yset = range(1, isqrt(limit - 4) + 1, 2)
+    wheel = {1, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 49, 53, 59}
+    sieve, lim = defaultdict(bool), isqrt(limit) + 1
+    xset, yset = range(1, isqrt(limit // 4) + 1), range(1, lim, 2)
 
     for x, y in product(xset, yset):
         n = 4 * x ** 2 + y ** 2
         if n <= limit and n % 60 in {1, 13, 17, 29, 37, 41, 49, 53}:
             sieve[n] ^= True
 
-    xset = range(1, isqrt((limit - 1) // 3) + 1)
-    yset = range(2, isqrt(limit - 3) + 1, 2)
+    xset, yset = range(1, isqrt(limit // 3) + 1), range(2, lim, 2)
 
     for x, y in product(xset, yset):
         n = 3 * x ** 2 + y ** 2
         if n <= limit and n % 60 in {7, 19, 31, 43}:
             sieve[n] ^= True
 
-    lim2 = int((sqrt(limit * 2 + 3) + 1) / 2)
+    lim = isqrt(limit * 2 + 3) // 2 + 1
 
-    for x in range(2, lim2):
+    for x in range(2, lim):
         for y in range(1, x):
             n = 3 * x ** 2 - y ** 2
             if n <= limit and n % 60 in {11, 23, 47, 59}:
                 sieve[n] ^= True
 
-    nwset = range(0, limit // 49 - 1, 60)
+    wset, nwset = range(0, limit, 60), range(0, limit // 49, 60)
 
-    for w, x in product(wset, s):
-        n = w + x
-        npow = n ** 2
-        if n >= 7 and npow < limit and sieve[n]:
-            for w, x in product(nwset, s):
-                c = npow * (w + x)
-                if c <= limit:
+    for w, x in product(wset, wheel):
+        npow = (n := w + x) ** 2
+        if npow < limit and sieve[n]:
+            for w, x in product(nwset, wheel):
+                if (c := npow * (w + x)) <= limit:
                     sieve[c] = False
 
-    for w, x in product(wset, s):
-        n = w + x
-        if n > limit:
+    results = [2, 3, 5]
+
+    for w, x in product(wset, wheel):
+        if (n := w + x) > limit:
             break
         if sieve[n]:
             results.append(n)
@@ -112,4 +102,4 @@ def main(n: int = 10_000) -> None:
 
 if __name__ == "__main__":
     # doctest.testmod()
-    main()
+    main(100000)
