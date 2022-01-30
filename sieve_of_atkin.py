@@ -80,7 +80,7 @@ def sieve_of_atkin(limit: int) -> list[int]:
         npow = (n := w+x) * n
         if npow < limit and sieve[n]:
             for w, x in product(nwset, wheel):
-                if (c := npow * (w + x)) <= limit:
+                if (c := npow * (w+x)) <= limit:
                     sieve[c] = False
 
     results = [2, 3, 5]
