@@ -18,7 +18,7 @@ def square(x: int) -> int:
     return x*x
 
 
-def sieve_of_atkin(limit: int):
+def sieve_of_atkin(limit: int) -> list[int]:
     """Returns the number of primes from 2 to a specified limit in a list.
     
     An algorithm for finding all primes less than or equal to the limit
