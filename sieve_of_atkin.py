@@ -1,36 +1,22 @@
-# !usr/bin/env python3
-
-"""An implementation of the Sieve of Atkin algorithm in Python.
-How the algorithm works can be read in the references below.
-
-References:
-    - https://en.wikipedia.org/wiki/Sieve_of_Atkin
-"""
-
 import cProfile
 import doctest
-from itertools import product
-import math
+from itertools import compress, count, product
+from math import isqrt
+from operator import mul
 import pstats
 
 
-def square(x: int) -> int:
-    return x*x
-
-
-def sieve_of_atkin(limit: int) -> list[int]:
+def sieve_of_atkin(n: int) -> list[int]:
     """Returns the number of primes from 2 to a specified limit in a list.
-    
+
     An algorithm for finding all primes less than or equal to the limit
     specified to the function. The algorithm works by not only marking
     multiples of a number, but also multiples of its square, and checking
     modulo 60 remainders.
-
     :param limit: The maximum value for a prime number.
     :type limit: int
     :return: All prime numbers less than or equal to the limit specified.
     :rtype: list[int]
-
     Examples:
     >>> sieve_of_atkin(5)
     [2, 3, 5]
@@ -48,27 +34,24 @@ def sieve_of_atkin(limit: int) -> list[int]:
     >>> len(sieve_of_atkin(200_000))
     17984
     """
-    sieve = [False] * limit
-    root = math.isqrt(limit) + 1
-    squares = map(square, range(root))
+    sieve = bytearray(n)
+    lim = isqrt(n) + 1
+    squares = map(mul, range(lim), range(lim))
     for x2, y2 in product(squares, repeat=2):
-        n = 4*x2 + y2
-        if n < limit and n % 60 in {1, 13, 17, 29, 37, 41, 49, 53}:
-            sieve[n] ^= True
-        n = 3*x2 + y2
-        if n < limit and n % 60 in {7, 19, 31, 43}:
-            sieve[n] ^= True
+        r = 4 * x2 + y2
+        if r < n and r % 60 in {1, 13, 17, 29, 37, 41, 49, 53}:
+            sieve[r] ^= True
+        r = 3 * x2 + y2
+        if r < n and r % 60 in {7, 19, 31, 43}:
+            sieve[r] ^= True
         if x2 > y2:
-            n = 3*x2 - y2
-            if n < limit and n % 60 in {11, 23, 47, 59}:
-                sieve[n] ^= True
-    results = [2, 3, 5]
-    for i, prime in enumerate(sieve):
-        if i > 1 and prime:
-            results.append(i)
-            for x in range(i*i, limit, i*i):
-                sieve[x] = False
-    return results
+            r = 3 * x2 - y2
+            if r < n and r % 60 in {11, 23, 47, 59}:
+                sieve[r] ^= True
+    sieve[:6] = 0, 0, 1, 1, 0, 1
+    for i in compress(count(), sieve):
+        sieve[i * i :: i * i] = bytearray(len(range(i * i, n, i * i)))
+    return list(compress(count(), sieve))
 
 
 def main(n: int = 10_000) -> None:
